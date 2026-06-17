@@ -1,67 +1,43 @@
-# Validation Notes
+# Validation
 
-Validation run in Hermes container on 2026-06-17 for the expanded Agentic OS MVP+ branch.
+Validation for `feature/product-ui-agent-rooms`.
 
-## Passed
+## Commands run
 
 ```bash
 python -m compileall backend
+pytest
+npm --prefix frontend install
+npm --prefix frontend run build
 ```
 
-Result: passed.
+## Results
 
-```bash
-AGENTIC_OS_ENVIRONMENT=development AGENTIC_OS_DATA_DIR=/tmp/agentic-os-pytest-full2 python -m pytest -q
-```
+- `python -m compileall backend`: passed.
+- `pytest`: passed, 3 tests.
+- `npm --prefix frontend install`: passed; npm reported 2 dependency vulnerabilities from the existing frontend dependency set.
+- `npm --prefix frontend run build`: passed; Vite produced `frontend/dist` assets.
 
-Result: `3 passed, 2 warnings`.
+## Notes
 
-```bash
-cd frontend
-npm install
-npm run build
-```
+- Added `backend/__init__.py` so pytest can import `backend.app...` consistently from the repository root.
+- Frontend build uses React + Vite + TypeScript and now compiles the refactored app structure under `frontend/src/app`, `frontend/src/components`, `frontend/src/pages`, and `frontend/src/styles`.
+- No backend endpoint behavior was broken or removed.
 
-Result: Vite production build completed successfully.
+## Docker validation
 
-```bash
-PYTHONPATH=/root/work/agentic-os-full \
-AGENTIC_OS_DATA_DIR=/tmp/agentic-os-test-full \
-AGENTIC_OS_ENVIRONMENT=development \
-AGENTIC_OS_PUBLIC_URL=http://0.0.0.0:3737 \
-uvicorn backend.app.main:app --host 0.0.0.0 --port 3737
-```
+Docker was requested when available, but this execution environment returned `docker: command not found`, so the image build/run smoke could not be performed here.
 
-Health probe result:
-
-```json
-{
-  "status": "healthy",
-  "app": "Agentic OS",
-  "bind_host": "0.0.0.0",
-  "public_url": "http://0.0.0.0:3737",
-  "data_dir": "/tmp/agentic-os-test-full",
-  "sqlite_path": "/tmp/agentic-os-test-full/agentic-os.db"
-}
-```
-
-SQLite DB was created at `/tmp/agentic-os-test-full/agentic-os.db`.
-
-## Synology/LAN note
-
-The app binds to `0.0.0.0:3737`. In Synology host networking, browser access should use:
-
-```text
-http://<SYNOLOGY_LAN_IP>:3737
-```
-
-Do not use `127.0.0.1` from another LAN device; that points to the client device.
-
-## Not run in this Hermes container
+Run this on a Docker-capable host:
 
 ```bash
 docker build -t agentic-os:local .
-docker run --rm --network host -e AGENTIC_OS_ADMIN_TOKEN=*** -e AGENTIC_OS_DATA_DIR=/data -v /tmp/agentic-os-test:/data agentic-os:local
+docker run --rm --network host \
+  -e AGENTIC_OS_ADMIN_TOKEN=*** \
+  -e AGENTIC_OS_DATA_DIR=/data \
+  -v /tmp/agentic-os-test:/data \
+  agentic-os:local
+curl http://127.0.0.1:3737/api/health
 ```
 
-Blocked because Docker CLI is not installed in this Hermes execution environment (`docker: command not found`). The repo includes `Dockerfile` and `docker-compose.yml` with `network_mode: "host"` for Synology validation.
+Expected health response includes `status: healthy`, `app: Agentic OS`, and the configured data/sqlite paths.

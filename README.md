@@ -50,22 +50,33 @@ Persistent data path:
 
 `AGENTIC_OS_ADMIN_TOKEN` is required in production. The UI stores it only in browser localStorage and sends it as `x-admin-token` for protected actions.
 
+## Product UI
+
+The frontend is a product-grade local AI operations studio, not a raw JSON admin panel. It is organized around four rooms:
+
+- **Codex Room**: audited coding/build runs, sessions, readable live logs, diff/test summary, and explicit controlled commit/push gates.
+- **DeepSeek Room**: polished low-cost chat surface with thread list, model selector, message bubbles, sticky composer, loading/error states, provider visibility, memory, and audit tabs.
+- **Claude Room**: intentional premium-agent setup surface with not-configured state, required config/env checklist, and future capability grouping.
+- **Hermes Room**: orchestrator/system layer for gateway, jobs, MCP registry, skills, Kanban, memory, and activity.
+
+Workspace pages are grouped separately: Mission Control, Workspaces, Kanban, Memory, Skills Hub, Activity, and Settings. Raw JSON is no longer the primary UI; advanced raw payloads are only exposed inside collapsible sections where useful.
+
 ## Implemented control-plane areas
 
-- Mission Control with active process and failed-action telemetry
+- Mission Control with hero, agent status strip, metrics, room cards, recent activity, failures, and quick actions
 - Agent registry from YAML
 - Chat threads/messages persisted in SQLite
 - OpenAI-compatible chat adapter for DeepSeek/OpenWebUI
 - Codex sessions with live log polling, cancel, git diff/test result/artifacts, confirm-only commit/push endpoints
-- Workspace registry and command allowlist enforcement
-- Local Kanban
-- Local Memory
-- Skills Hub
+- Workspace registry and command allowlist enforcement rendered as cards
+- Local Kanban board with workflow columns and quick-create
+- Local Memory library with search/scope filters and add form
+- Visual Skills Hub
 - Audit timeline and JSONL export
-- Settings effective config view and safe registry update endpoint
+- Settings effective config view with secrets hidden and raw config under Advanced
 - Goal Mode scaffold
 - MCP registry scaffold
-- Claude Code disabled placeholder
+- Claude Code disabled/setup room
 
 ## Validation
 
