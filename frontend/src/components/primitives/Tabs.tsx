@@ -1,0 +1,1 @@
+import React from 'react';import{cls}from'./Card';export function Tabs({tabs,active,onChange}:{tabs:string[];active:string;onChange:(tab:string)=>void}){return <div className='tabs'>{tabs.map(t=><button key={t} className={cls('tab',active===t&&'active')} onClick={()=>onChange(t)}>{t}</button>)}</div>}

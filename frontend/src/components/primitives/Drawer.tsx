@@ -1,0 +1,1 @@
+import React from 'react';import{Button}from'./Card';export function Drawer({open,onClose,children}:{open:boolean;onClose:()=>void;children:React.ReactNode}){return <div className={open?'drawer open':'drawer'}><div className='drawer-backdrop' onClick={onClose}/><aside className='drawer-panel'>{children}<Button variant='ghost' onClick={onClose}>Close</Button></aside></div>}

@@ -1,0 +1,2 @@
+import{useEffect,useState}from'react';import{get}from'../api/client';
+export function useData<T>(path:string,interval=0){const[data,setData]=useState<T|null>(null);const[error,setError]=useState('');const[loading,setLoading]=useState(true);const refresh=()=>{setLoading(true);get<T>(path).then(d=>{setData(d);setError('')}).catch(e=>setError(e.message||String(e))).finally(()=>setLoading(false))};useEffect(()=>{if(!path)return;refresh();if(interval){const id=setInterval(refresh,interval);return()=>clearInterval(id)}},[path]);return{data,error,loading,refresh,setData}}
