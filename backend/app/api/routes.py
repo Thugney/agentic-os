@@ -73,6 +73,52 @@ def systems_status():
 
 @router.get('/agents')
 def get_agents(): return config_service.agents()
+
+@router.get('/hermes/capabilities')
+def hermes_capabilities():
+    """Expose the Hermes capability map used by the UI.
+
+    This is intentionally explicit instead of pretending the UI can magically
+    mutate the running Hermes instance. Items marked wired have an API in this
+    app today; scaffold items are visible but not yet runtime-managed.
+    """
+    effective = config_service.effective_settings()
+    active = rows("SELECT * FROM agent_processes WHERE status='running' ORDER BY started_at DESC")
+    mcps = rows('SELECT * FROM mcp_registry ORDER BY created_at DESC')
+    return {
+        'agent': 'hermes-control',
+        'running_here': {
+            'app': 'Agentic OS control plane',
+            'host_binding': get_settings().app_host,
+            'public_url': get_settings().public_url,
+            'data_dir': str(get_settings().data_dir),
+            'active_processes': active,
+        },
+        'configured': {
+            'agents': effective.get('agents', []),
+            'providers': effective.get('providers', []),
+            'workspaces': effective.get('workspaces', []),
+            'skills': effective.get('skills', []),
+            'mcps': mcps,
+        },
+        'capabilities': [
+            {'name':'MCP registry', 'route':'MCPs', 'api':['GET /api/mcps','POST /api/mcps'], 'status':'wired-registry', 'notes':'Register/list MCP connectors. Runtime start/stop is still scaffolded.'},
+            {'name':'Chat sessions', 'route':'Chat Sessions', 'api':['GET /api/chat/threads','GET /api/chat/threads/{id}'], 'status':'wired'},
+            {'name':'DeepSeek/OpenAI-compatible chat', 'route':'Chat', 'api':['POST /api/chat'], 'status':'wired-if-provider-configured'},
+            {'name':'Workspaces', 'route':'Workspaces', 'api':['GET /api/workspaces'], 'status':'wired'},
+            {'name':'Kanban', 'route':'Kanban', 'api':['GET/POST/PATCH /api/kanban/tasks'], 'status':'wired'},
+            {'name':'Memory', 'route':'Memory', 'api':['GET/POST /api/memory'], 'status':'wired-local-db'},
+            {'name':'Skills Hub', 'route':'Skills Hub', 'api':['GET /api/skills'], 'status':'wired-registry'},
+            {'name':'Audit/activity', 'route':'Activity', 'api':['GET /api/audit','GET /api/audit/export.jsonl'], 'status':'wired'},
+            {'name':'Settings registry', 'route':'Settings', 'api':['GET /api/settings/effective','PATCH /api/settings/registry'], 'status':'wired-no-secrets'},
+            {'name':'Goal mode', 'route':'Goals', 'api':['GET/POST/PATCH /api/goals'], 'status':'scaffold-records-only'},
+            {'name':'Cron jobs', 'route':'Capabilities', 'api':[], 'status':'not-yet-integrated', 'notes':'Hermes supports cron, but this app does not manage live Hermes cron yet.'},
+            {'name':'Profiles', 'route':'Capabilities', 'api':[], 'status':'not-yet-integrated', 'notes':'Hermes profiles are documented; UI management is not implemented yet.'},
+            {'name':'Gateway/platforms', 'route':'Capabilities', 'api':[], 'status':'not-yet-integrated', 'notes':'Hermes gateway status/actions are not wired to this app yet.'},
+            {'name':'Tools/toolsets', 'route':'Capabilities', 'api':[], 'status':'not-yet-integrated', 'notes':'Hermes tool enable/disable is not wired yet.'},
+        ]
+    }
+
 @router.get('/workspaces')
 def get_workspaces(): return workspace_statuses()
 @router.get('/settings/effective')
