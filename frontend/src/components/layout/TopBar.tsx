@@ -1,0 +1,5 @@
+import{Command,Menu,Plus,Radio}from'lucide-react';
+import{Button,Badge}from'../primitives/Card';
+import{getToken,setToken}from'../../api/client';
+import{pageTitles,PageKey}from'./Sidebar';
+export function TopBar({page,onMenu,onNewTask,onCommand}:{page:PageKey;onMenu:()=>void;onNewTask:()=>void;onCommand:()=>void}){const token=getToken();return <header className='topbar'><div><p className='eyebrow'>Agentic OS / {pageTitles[page]}</p><h1>{pageTitles[page]}</h1></div><div className='top-actions'><Button variant='ghost' className='mobile-only' onClick={onMenu}><Menu size={18}/></Button><Button variant='secondary' onClick={onCommand}><Command size={16}/> Command</Button><Badge tone='success'><Radio size={12}/> heartbeat</Badge><label className='token-pill'><span>{token?'admin token set':'token missing'}</span><input type='password' defaultValue={token} onChange={e=>setToken(e.target.value)} placeholder='admin token'/></label><Button onClick={onNewTask}><Plus size={16}/> New Task</Button></div></header>}

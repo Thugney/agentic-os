@@ -1,0 +1,1 @@
+import{PageKey}from'./Sidebar';export function MobileNav({page,setPage}:{page:PageKey;setPage:(p:PageKey)=>void}){return <nav className='mobile-nav'>{(['mission','codex','deepseek','kanban','activity'] as PageKey[]).map(p=><button key={p} className={page===p?'active':''} onClick={()=>setPage(p)}>{p}</button>)}</nav>}
