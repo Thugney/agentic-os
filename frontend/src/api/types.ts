@@ -1,0 +1,13 @@
+export type AgentKey='codex'|'deepseek'|'claude'|'hermes';
+export type Status='ok'|'failed'|'error'|'running'|'disabled'|'ready'|'unknown'|string;
+export type SystemStatus={name:string;provider?:string;enabled?:boolean;latency_ms?:number|null;active_sessions?:number;latest_activity?:string|null};
+export type SystemsResponse={heartbeat:string;systems:SystemStatus[];active_processes:any[];recent_failed_actions:AuditEvent[]};
+export type Workspace={name?:string;path?:string;default_branch?:string;current_branch?:string;git_status?:string;allowed_commands?:string[];linked_sessions?:number;status?:string;error?:string;[key:string]:any};
+export type CodexSession={id:string;task:string;workspace:string;branch?:string;test_command?:string;status:string;command?:string;log?:string;exit_code?:number|null;started_at?:string;ended_at?:string;git_diff_summary?:string;test_result?:string;artifacts?:string;error?:string};
+export type ChatThread={id:string;title:string;agent?:string;provider?:string;model?:string;created_at?:string;updated_at?:string};
+export type ChatMessage={id:number;thread_id:string;role:'user'|'assistant'|'system'|string;content:string;created_at?:string};
+export type KanbanTask={id:string;title:string;description?:string;status:string;workspace?:string;agent_session?:string;git_branch?:string;artifact?:string;chat_thread?:string;created_at?:string;updated_at?:string};
+export type MemoryRecord={id:string;title:string;content:string;scope:string;tags?:string| string[];source_session?:string;created_at?:string;updated_at?:string};
+export type AuditEvent={id?:number;timestamp?:string;actor?:string;action:string;target_agent?:string;workspace?:string;command_type?:string;status:string;error?:string;git_branch?:string;git_commit?:string;metadata?:any};
+export type Skill={name:string;provider?:string;tool?:string;enabled?:boolean;command_template?:string;agent?:string;description?:string;[key:string]:any};
+export type EffectiveSettings={providers?:any[];agents?:any[];workspaces?:any[];skills?:any[];[key:string]:any};
