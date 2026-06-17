@@ -1,0 +1,14 @@
+services:
+  agentic-os:
+    build: .
+    container_name: agentic-os
+    network_mode: "host"
+    env_file:
+      - .env
+    environment:
+      AGENTIC_OS_DATA_DIR: /data
+      AGENTIC_OS_APP_PORT: 3737
+    volumes:
+      - /volume2/docker/agentic-os:/data
+      - ./:/workspace/agentic-os:rw
+    restart: unless-stopped

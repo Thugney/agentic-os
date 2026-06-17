@@ -1,0 +1,16 @@
+providers:
+  - name: openwebui
+    type: openai_compatible
+    endpoint: http://127.0.0.1:18790
+    url_env: OPENWEBUI_URL
+    default_model: deepseek-v4
+    api_key_env: OPENWEBUI_API_KEY
+    enabled: true
+  - name: hermes
+    type: hermes
+    endpoint: http://127.0.0.1:9119
+    url_env: HERMES_URL
+    enabled: true
+  - name: claude
+    type: placeholder
+    enabled: false

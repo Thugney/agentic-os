@@ -1,0 +1,16 @@
+skills:
+  - name: codex-safe-worker
+    description: Run scoped Codex tasks inside registered workspaces with audit logs and no --yolo.
+    tool_provider: codex
+    command_template: codex exec --sandbox danger-full-access "{task}"
+    enabled: true
+  - name: deepseek-chat
+    description: Chat through OpenAI-compatible DeepSeek/OpenWebUI endpoint.
+    tool_provider: openwebui
+    command_template: POST {endpoint}/v1/chat/completions
+    enabled: true
+  - name: hermes-control
+    description: Placeholder registry entry for future Hermes control API integration.
+    tool_provider: hermes
+    command_template: configurable
+    enabled: true
