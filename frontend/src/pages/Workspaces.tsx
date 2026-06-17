@@ -1,0 +1,2 @@
+import{useData}from'../app/hooks';import{WorkspaceGrid}from'../components/workspace/WorkspaceCard';import{SectionHeader,Button}from'../components/primitives/Card';
+export function Workspaces({go}:{go:(p:any)=>void}){const{data,error,refresh}=useData<any[]>('/workspaces');return <div className='page-stack'><SectionHeader eyebrow='repos' title='Configured workspaces'><Button variant='secondary' onClick={refresh}>Refresh git state</Button></SectionHeader>{error&&<p className='error-panel'>{error}</p>}<WorkspaceGrid workspaces={data||[]} onOpen={()=>go('codex')}/></div>}
