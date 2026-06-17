@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     app_name: str = "Agentic OS"
     app_host: str = "0.0.0.0"
     app_port: int = 3737
+    public_url: str = "http://0.0.0.0:3737"
     environment: str = "production"
     data_dir: Path = Path("/data")
     config_dir: Path = Path("config")

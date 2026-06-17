@@ -1,6 +1,6 @@
 # Validation Notes
 
-Validation run in Hermes container on 2026-06-17.
+Validation run in Hermes container on 2026-06-17 for the expanded Agentic OS MVP+ branch.
 
 ## Passed
 
@@ -11,12 +11,13 @@ python -m compileall backend
 Result: passed.
 
 ```bash
-AGENTIC_OS_ENVIRONMENT=development AGENTIC_OS_DATA_DIR=/tmp/agentic-os-pytest python -m pytest -q
+AGENTIC_OS_ENVIRONMENT=development AGENTIC_OS_DATA_DIR=/tmp/agentic-os-pytest-full2 python -m pytest -q
 ```
 
-Result: `1 passed, 2 warnings`.
+Result: `3 passed, 2 warnings`.
 
 ```bash
+cd frontend
 npm install
 npm run build
 ```
@@ -24,22 +25,37 @@ npm run build
 Result: Vite production build completed successfully.
 
 ```bash
-AGENTIC_OS_ADMIN_TOKEN=*** AGENTIC_OS_DATA_DIR=/tmp/agentic-os-test AGENTIC_OS_ENVIRONMENT=production uvicorn backend.app.main:app --host 127.0.0.1 --port 3737
-curl http://127.0.0.1:3737/api/health
+PYTHONPATH=/root/work/agentic-os-full \
+AGENTIC_OS_DATA_DIR=/tmp/agentic-os-test-full \
+AGENTIC_OS_ENVIRONMENT=development \
+AGENTIC_OS_PUBLIC_URL=http://0.0.0.0:3737 \
+uvicorn backend.app.main:app --host 0.0.0.0 --port 3737
 ```
 
-Result:
+Health probe result:
 
 ```json
 {
   "status": "healthy",
   "app": "Agentic OS",
-  "data_dir": "/tmp/agentic-os-test",
-  "sqlite_path": "/tmp/agentic-os-test/agentic-os.db"
+  "bind_host": "0.0.0.0",
+  "public_url": "http://0.0.0.0:3737",
+  "data_dir": "/tmp/agentic-os-test-full",
+  "sqlite_path": "/tmp/agentic-os-test-full/agentic-os.db"
 }
 ```
 
-SQLite DB was created at `/tmp/agentic-os-test/agentic-os.db`.
+SQLite DB was created at `/tmp/agentic-os-test-full/agentic-os.db`.
+
+## Synology/LAN note
+
+The app binds to `0.0.0.0:3737`. In Synology host networking, browser access should use:
+
+```text
+http://<SYNOLOGY_LAN_IP>:3737
+```
+
+Do not use `127.0.0.1` from another LAN device; that points to the client device.
 
 ## Not run in this Hermes container
 

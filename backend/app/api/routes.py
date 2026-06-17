@@ -10,7 +10,7 @@ from backend.app.services import config_service
 from backend.app.services.audit_service import list_audit, record
 from backend.app.services.workspace_service import workspace_statuses
 from backend.app.services.chat_service import send_chat, threads, thread
-from backend.app.services.codex_service import start_codex, sessions as codex_sessions, get_session, cancel
+from backend.app.services.codex_service import start_codex, sessions as codex_sessions, get_session, cancel, confirm_commit, confirm_push
 
 router=APIRouter(prefix='/api')
 class ChatIn(BaseModel):
@@ -24,6 +24,13 @@ class CodexIn(BaseModel):
     test_command: str|None=None
     auto_commit: bool=False
     background: bool=True
+class CommitIn(BaseModel):
+    message: str
+    confirm: bool=False
+class PushIn(BaseModel):
+    remote: str='origin'
+    branch: str|None=None
+    confirm: bool=False
 class KanbanIn(BaseModel):
     title: str
     description: str=''
@@ -39,6 +46,15 @@ class MemoryIn(BaseModel):
     scope: str='global'
     tags: list[str]=[]
     source_session: str|None=None
+class GoalIn(BaseModel):
+    title: str
+    description: str=''
+    workspace: str|None=None
+    agent: str|None=None
+    status: str='Backlog'
+class RegistryUpdate(BaseModel):
+    kind: str
+    payload: dict
 
 def actor(req: Request):
     return actor_from_token(req.headers.get('x-admin-token') or req.headers.get('authorization'))
@@ -46,13 +62,14 @@ def actor(req: Request):
 @router.get('/health')
 def health():
     s=get_settings()
-    return {'status':'healthy','app':'Agentic OS','data_dir':str(s.data_dir),'sqlite_path':str(s.db_path)}
+    return {'status':'healthy','app':'Agentic OS','bind_host':s.app_host,'public_url':s.public_url,'data_dir':str(s.data_dir),'sqlite_path':str(s.db_path)}
 
 @router.get('/systems/status')
 def systems_status():
     agents=config_service.agents()
     recent_failed=rows("SELECT * FROM audit_log WHERE status IN ('failed','error') ORDER BY id DESC LIMIT 5")
-    return {'heartbeat':'online','systems':[{'name':a.get('name'),'provider':a.get('provider'),'enabled':a.get('enabled',True),'latency_ms':None,'active_sessions':0,'latest_activity':None} for a in agents], 'recent_failed_actions': recent_failed}
+    active = rows("SELECT * FROM agent_processes WHERE status='running' ORDER BY started_at DESC")
+    return {'heartbeat':'online','systems':[{'name':a.get('name'),'provider':a.get('provider'),'enabled':a.get('enabled',True),'latency_ms':None,'active_sessions':len([p for p in active if a.get('name','').split('-')[0] in p.get('kind','')]),'latest_activity':None} for a in agents], 'active_processes': active, 'recent_failed_actions': recent_failed}
 
 @router.get('/agents')
 def get_agents(): return config_service.agents()
@@ -60,6 +77,15 @@ def get_agents(): return config_service.agents()
 def get_workspaces(): return workspace_statuses()
 @router.get('/settings/effective')
 def settings_effective(): return config_service.effective_settings()
+@router.patch('/settings/registry')
+def settings_update(body: RegistryUpdate, request: Request):
+    try:
+        result = config_service.update_registry(body.kind, body.payload)
+        record('settings.registry.update','ok',actor=actor(request),command_type='config',metadata={'kind':body.kind})
+        return result
+    except Exception as e:
+        record('settings.registry.update','failed',actor=actor(request),command_type='config',error=e,metadata={'kind':body.kind})
+        raise HTTPException(400, str(e))
 @router.get('/skills')
 def get_skills(): return config_service.skills()
 
@@ -87,6 +113,16 @@ def codex_get(sid: str):
     return s
 @router.post('/codex/sessions/{sid}/cancel')
 def codex_cancel(sid: str): return cancel(sid)
+@router.post('/codex/sessions/{sid}/commit')
+def codex_commit(sid: str, body: CommitIn, request: Request):
+    if not body.confirm: raise HTTPException(400, 'explicit confirm=true required before commit')
+    try: return confirm_commit(sid, body.message, actor=actor(request))
+    except Exception as e: raise HTTPException(400, str(e))
+@router.post('/codex/sessions/{sid}/push')
+def codex_push(sid: str, body: PushIn, request: Request):
+    if not body.confirm: raise HTTPException(400, 'explicit confirm=true required before push')
+    try: return confirm_push(sid, body.remote, body.branch, actor=actor(request))
+    except Exception as e: raise HTTPException(400, str(e))
 
 @router.get('/kanban/tasks')
 def kanban_tasks(): return rows('SELECT * FROM kanban_tasks ORDER BY created_at DESC')
@@ -115,6 +151,31 @@ def memory_create(body: MemoryIn, request: Request):
     execute('INSERT INTO memory_records(id,title,content,scope,tags,source_session) VALUES (?,?,?,?,?,?)', (mid, body.title, body.content, body.scope, json.dumps(body.tags), body.source_session))
     record('memory.create','ok',actor=actor(request),metadata={'memory_id':mid,'scope':body.scope})
     return one('SELECT * FROM memory_records WHERE id=?',(mid,))
+
+@router.get('/goals')
+def goals(): return rows('SELECT * FROM goal_runs ORDER BY created_at DESC')
+@router.post('/goals')
+def goal_create(body: GoalIn, request: Request):
+    gid=str(uuid.uuid4())
+    execute('INSERT INTO goal_runs(id,title,description,status,workspace,agent) VALUES (?,?,?,?,?,?)', (gid, body.title, body.description, body.status, body.workspace, body.agent))
+    record('goal.create','ok',actor=actor(request),workspace=body.workspace,target_agent=body.agent,metadata={'goal_id':gid})
+    return one('SELECT * FROM goal_runs WHERE id=?',(gid,))
+@router.patch('/goals/{gid}')
+def goal_patch(gid: str, body: dict, request: Request):
+    for k,v in body.items():
+        if k in {'title','description','status','workspace','agent'}:
+            execute(f'UPDATE goal_runs SET {k}=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',(v,gid))
+    record('goal.update','ok',actor=actor(request),metadata={'goal_id':gid})
+    return one('SELECT * FROM goal_runs WHERE id=?',(gid,))
+
+@router.get('/mcps')
+def mcps(): return rows('SELECT * FROM mcp_registry ORDER BY created_at DESC')
+@router.post('/mcps')
+def mcp_create(body: dict, request: Request):
+    mid=str(uuid.uuid4())
+    execute('INSERT INTO mcp_registry(id,name,endpoint,enabled,status) VALUES (?,?,?,?,?)', (mid, body.get('name'), body.get('endpoint'), int(bool(body.get('enabled'))), body.get('status','placeholder')))
+    record('mcp.registry.create','ok',actor=actor(request),metadata={'mcp_id':mid,'name':body.get('name')})
+    return one('SELECT * FROM mcp_registry WHERE id=?',(mid,))
 
 @router.get('/audit')
 def audit(agent: str|None=None, workspace: str|None=None, status: str|None=None, limit: int=250): return list_audit(limit, agent, workspace, status)
