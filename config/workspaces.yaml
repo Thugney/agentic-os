@@ -3,5 +3,12 @@ workspaces:
     path: /workspace/agentic-os
     repo_url: https://github.com/Thugney/agentic-os.git
     default_branch: main
-    allowed_commands: [python -m compileall backend, pytest, npm run build, git status, git diff]
+    allowed_commands:
+      - python -m compileall backend
+      - pytest
+      - python -m pytest
+      - npm --prefix frontend install
+      - npm --prefix frontend run build
+      - git status
+      - git diff
     description: Agentic OS control plane repository. Mount or adjust this path on Synology.

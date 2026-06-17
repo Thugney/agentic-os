@@ -6,7 +6,7 @@ agents:
     workspace: agentic-os
     allowed_tools: [git, test, edit]
     memory_scope: workspace
-    system_prompt: Scoped coding worker. No yolo. No secrets. No commit or push without confirmation.
+    system_prompt: Scoped coding worker. No yolo. No secrets. No commit or push without explicit confirmation.
     enabled: true
   - name: deepseek-chat
     provider: openwebui
@@ -22,9 +22,9 @@ agents:
     model: configured-in-hermes
     endpoint: http://127.0.0.1:9119
     workspace: agentic-os
-    allowed_tools: [control, audit, kanban]
+    allowed_tools: [control, audit, kanban, goals]
     memory_scope: global
-    system_prompt: Hermes control-plane adapter placeholder for MVP.
+    system_prompt: Hermes control-plane adapter scaffold for goal orchestration and registry control.
     enabled: true
   - name: claude-code
     provider: claude
@@ -35,3 +35,12 @@ agents:
     memory_scope: workspace
     system_prompt: Disabled placeholder until Claude Code is configured.
     enabled: false
+  - name: mcp-registry
+    provider: local
+    model: registry
+    endpoint: sqlite
+    workspace: agentic-os
+    allowed_tools: [registry]
+    memory_scope: global
+    system_prompt: Placeholder MCP registry for future runtime management.
+    enabled: true
