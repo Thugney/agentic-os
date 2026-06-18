@@ -34,11 +34,11 @@ providers:
     label: Hermes Agent
     type: hermes
     connection_mode: remote_api
-    endpoint: http://192.168.1.110:8000
+    endpoint: http://192.168.1.118:8642
     url_env: HERMES_URL
     cli_binary: hermes
     enabled: true
-    notes: "Remote Hermes should be an API/gateway endpoint, not a dashboard URL. CLI bridge is optional if Hermes is installed/mounted locally."
+    notes: "Remote Hermes must use the callable gateway/API at HERMES_URL. The dashboard command on port 9119 only exposes the human dashboard and does not expose capabilities by itself."
   - name: claude
     label: Claude Code
     type: claude_code
