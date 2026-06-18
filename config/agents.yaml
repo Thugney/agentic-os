@@ -2,29 +2,29 @@ agents:
   - name: codex-worker
     provider: codex
     model: codex-cli
-    endpoint: local-subprocess
+    endpoint: local-cli
     workspace: agentic-os
     allowed_tools: [git, test, edit]
     memory_scope: workspace
     system_prompt: Scoped coding worker. No yolo. No secrets. No commit or push without explicit confirmation.
     enabled: true
   - name: deepseek-chat
-    provider: openwebui
-    model: deepseek-v4
-    endpoint: http://127.0.0.1:18790
+    provider: deepseek
+    model: deepseek-chat
+    endpoint: https://api.deepseek.com
     workspace: agentic-os
     allowed_tools: [chat]
     memory_scope: global
-    system_prompt: Local OpenAI-compatible chat via OpenWebUI/OpenClaw.
+    system_prompt: OpenAI-compatible DeepSeek API chat. API key must live in .env as DEEPSEEK_API_KEY.
     enabled: true
   - name: hermes-control
     provider: hermes
     model: configured-in-hermes
-    endpoint: http://127.0.0.1:9119
+    endpoint: http://192.168.1.110:8000
     workspace: agentic-os
     allowed_tools: [control, audit, kanban, goals]
     memory_scope: global
-    system_prompt: Hermes control-plane adapter scaffold for goal orchestration and registry control.
+    system_prompt: Hermes remote control-plane adapter. Requires Hermes API/gateway endpoint or optional local CLI bridge.
     enabled: true
   - name: claude-code
     provider: claude

@@ -1,6 +1,6 @@
 export type AgentKey='codex'|'deepseek'|'claude'|'hermes';
 export type Status='ok'|'failed'|'error'|'running'|'disabled'|'ready'|'unknown'|string;
-export type SystemStatus={name:string;provider?:string;enabled?:boolean;ready?:boolean;status?:string;detail?:string;latency_ms?:number|null;active_sessions?:number;latest_activity?:string|null;chat_available?:boolean;action_available?:boolean;path?:string|null;endpoint?:string|null;models?:string[]};
+export type SystemStatus={name:string;provider?:string;connection_mode?:string;enabled?:boolean;ready?:boolean;status?:string;detail?:string;latency_ms?:number|null;active_sessions?:number;latest_activity?:string|null;chat_available?:boolean;action_available?:boolean;path?:string|null;endpoint?:string|null;models?:string[]};
 export type SystemsResponse={heartbeat:string;systems:SystemStatus[];active_processes:any[];recent_failed_actions:AuditEvent[]};
 export type Workspace={name?:string;path?:string;default_branch?:string;current_branch?:string;git_status?:string;allowed_commands?:string[];linked_sessions?:number;status?:string;error?:string;[key:string]:any};
 export type CodexSession={id:string;task:string;workspace:string;branch?:string;test_command?:string;status:string;command?:string;log?:string;exit_code?:number|null;started_at?:string;ended_at?:string;git_diff_summary?:string;test_result?:string;artifacts?:string;error?:string};

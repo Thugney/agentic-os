@@ -1,16 +1,44 @@
 providers:
-  - name: openwebui
+  - name: deepseek
+    label: DeepSeek API
     type: openai_compatible
+    connection_mode: cloud_api
+    endpoint: https://api.deepseek.com
+    url_env: DEEPSEEK_BASE_URL
+    default_model: deepseek-chat
+    api_key_env: DEEPSEEK_API_KEY
+    enabled: true
+    notes: "Default DeepSeek connection. Store the API key in .env as DEEPSEEK_API_KEY; do not paste secrets into the UI."
+  - name: openwebui
+    label: OpenWebUI / custom OpenAI-compatible endpoint
+    type: openai_compatible
+    connection_mode: custom_endpoint
     endpoint: http://127.0.0.1:18790
     url_env: OPENWEBUI_URL
     default_model: deepseek-v4
     api_key_env: OPENWEBUI_API_KEY
+    enabled: false
+    notes: "Optional local/custom endpoint. Enable only if Robel chooses OpenWebUI/OpenClaw later."
+  - name: codex
+    label: Codex
+    type: codex
+    connection_mode: local_cli
+    endpoint: local-cli
+    cli_binary: codex
+    api_key_env: OPENAI_API_KEY
     enabled: true
+    notes: "MVP execution uses a local CLI adapter inside the Agentic OS runtime. Remote/API adapters are explicit future modes, not silently assumed."
   - name: hermes
+    label: Hermes Agent
     type: hermes
-    endpoint: http://127.0.0.1:9119
+    connection_mode: remote_api
+    endpoint: http://192.168.1.110:8000
     url_env: HERMES_URL
+    cli_binary: hermes
     enabled: true
+    notes: "Remote Hermes should be an API/gateway endpoint, not a dashboard URL. CLI bridge is optional if Hermes is installed/mounted locally."
   - name: claude
+    label: Claude Code
     type: placeholder
+    connection_mode: not_configured
     enabled: false
