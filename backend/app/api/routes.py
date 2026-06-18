@@ -82,24 +82,27 @@ def hermes_capabilities():
     effective = config_service.effective_settings()
     active = rows("SELECT * FROM agent_processes WHERE status='running' ORDER BY started_at DESC")
     mcps = rows('SELECT * FROM mcp_registry ORDER BY created_at DESC')
+    provider = next((p for p in effective.get('providers', []) if p.get('name') == 'hermes'), {})
+    endpoint = provider.get('endpoint')
     return {
         'agent': 'hermes-control',
-        'gateway_note': 'Hermes dashboard is not an action API. Use HERMES_URL for the callable API/gateway, e.g. http://192.168.1.118:8642 when that service is running.',
+        'gateway_note': 'Hermes dashboard is not an action API. HERMES_URL points to the callable Hermes gateway/API. Agentic OS remote chat uses POST /api/hermes/chat, which forwards to the Hermes OpenAI-compatible chat route.',
         'kanban_note': 'Agentic OS Kanban is currently its own SQLite work queue. It is not yet synchronized with Hermes kanban boards; that requires a Hermes kanban adapter/API contract.',
         'running_here': {'app': 'Agentic OS control plane','host_binding': get_settings().app_host,'public_url': get_settings().public_url,'data_dir': str(get_settings().data_dir),'active_processes': active},
         'configured': {'agents': effective.get('agents', []),'providers': effective.get('providers', []),'workspaces': effective.get('workspaces', []),'skills': effective.get('skills', []),'mcps': mcps},
         'capabilities': [
+            {'name':'Hermes gateway health', 'route':'Gateway', 'api':['GET HERMES_URL/health'], 'status':'wired-probe', 'notes':f'Gateway endpoint configured as {endpoint or "not set"}. This proves reachability only.'},
+            {'name':'Hermes remote chat', 'route':'Chat', 'api':['POST /api/hermes/chat','POST HERMES_URL/v1/chat/completions'], 'status':'wired-remote-chat', 'notes':'Uses HERMES_URL first. Local Hermes CLI is not required for remote chat mode.'},
+            {'name':'Agentic OS chat sessions', 'route':'Chat Sessions', 'api':['GET /api/chat/threads','GET /api/chat/threads/{id}'], 'status':'wired-local-store', 'notes':'Stores conversation threads locally in Agentic OS.'},
             {'name':'MCP registry', 'route':'MCPs', 'api':['GET /api/mcps','POST /api/mcps'], 'status':'wired-registry', 'notes':'Register/list MCP connectors. Runtime start/stop is still scaffolded.'},
-            {'name':'Chat sessions', 'route':'Chat Sessions', 'api':['GET /api/chat/threads','GET /api/chat/threads/{id}'], 'status':'wired'},
-            {'name':'DeepSeek chat', 'route':'DeepSeek Room', 'api':['POST /api/chat'], 'status':'wired-if-provider-configured'},
-            {'name':'Custom agents', 'route':'Agents', 'api':['GET /api/agents','POST /api/runtime/agents'], 'status':'wired-config'},
-            {'name':'Workspaces', 'route':'Workspaces', 'api':['GET /api/workspaces','POST /api/workspaces/register'], 'status':'wired-config-and-status'},
-            {'name':'Kanban', 'route':'Kanban', 'api':['GET/POST/PATCH /api/kanban/tasks'], 'status':'wired-local-board', 'notes':'Not yet synced with Hermes kanban.'},
-            {'name':'Memory', 'route':'Memory', 'api':['GET/POST /api/memory'], 'status':'wired-local-db'},
-            {'name':'Skills Hub', 'route':'Skills Hub', 'api':['GET /api/skills'], 'status':'wired-registry'},
-            {'name':'Audit/activity', 'route':'Activity', 'api':['GET /api/audit','GET /api/audit/export.jsonl'], 'status':'wired'},
-            {'name':'Settings registry', 'route':'Settings', 'api':['GET /api/settings/effective','PATCH /api/settings/registry'], 'status':'wired-no-secrets'},
-            {'name':'Hermes profiles/gateway/cron', 'route':'Hermes Room', 'api':[], 'status':'not-yet-integrated', 'notes':'Requires Hermes gateway API route mapping. Dashboard port 9119 is not enough.'},
+            {'name':'Custom agents', 'route':'Agents', 'api':['GET /api/agents','POST /api/runtime/agents'], 'status':'wired-config', 'notes':'Create agent identities and attach provider/workspace/memory/tools.'},
+            {'name':'Workspaces', 'route':'Workspaces', 'api':['GET /api/workspaces','POST /api/workspaces/register'], 'status':'wired-config-and-status', 'notes':'Agentic OS workspace registry; Hermes file access still needs an execution adapter.'},
+            {'name':'Memory', 'route':'Memory', 'api':['GET/POST /api/memory'], 'status':'wired-local-db', 'notes':'Agentic OS local memory/context store.'},
+            {'name':'Skills Hub', 'route':'Skills Hub', 'api':['GET /api/skills'], 'status':'wired-registry', 'notes':'Agentic OS skills/capability registry.'},
+            {'name':'Audit/activity', 'route':'Activity', 'api':['GET /api/audit','GET /api/audit/export.jsonl'], 'status':'wired-local-audit', 'notes':'Agentic OS audit log.'},
+            {'name':'Hermes Kanban sync', 'route':'Kanban', 'api':[], 'status':'not-yet-integrated', 'notes':'Agentic OS Kanban is local. Hermes Kanban sync/execution requires a Hermes kanban API route mapping.'},
+            {'name':'Hermes cron management', 'route':'Jobs', 'api':[], 'status':'not-yet-integrated', 'notes':'Cron listing/create/update/delete needs a Hermes API route mapping. Not the dashboard.'},
+            {'name':'Hermes profiles/sessions/tools', 'route':'Gateway', 'api':[], 'status':'not-yet-integrated', 'notes':'Needs explicit Hermes API routes for profile selection, sessions, skills, memory, and tools.'},
         ]
     }
 
