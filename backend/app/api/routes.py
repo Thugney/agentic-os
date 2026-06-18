@@ -36,6 +36,11 @@ class KanbanIn(BaseModel):
     title: str
     description: str=''
     status: str='Backlog'
+    priority: str='normal'
+    assigned_agent: str|None=None
+    schedule: str='manual'
+    due_at: str|None=None
+    approval_gate: str='ask-before-run'
     workspace: str|None=None
     agent_session: str|None=None
     git_branch: str|None=None
@@ -47,6 +52,10 @@ class MemoryIn(BaseModel):
     scope: str='global'
     tags: list[str]=[]
     source_session: str|None=None
+    source_type: str='manual'
+    source_name: str|None=None
+    workspace: str|None=None
+    agent: str|None=None
 class GoalIn(BaseModel):
     title: str
     description: str=''
@@ -65,13 +74,6 @@ def health():
     s=get_settings()
     return {'status':'healthy','app':'Agentic OS','bind_host':s.app_host,'public_url':s.public_url,'data_dir':str(s.data_dir),'sqlite_path':str(s.db_path)}
 
-@router.get('/systems/status')
-def systems_status():
-    agents=config_service.agents()
-    recent_failed=rows("SELECT * FROM audit_log WHERE status IN ('failed','error') ORDER BY id DESC LIMIT 5")
-    active = rows("SELECT * FROM agent_processes WHERE status='running' ORDER BY started_at DESC")
-    return {'heartbeat':'online','systems':[{'name':a.get('name'),'provider':a.get('provider'),'enabled':a.get('enabled',True),'latency_ms':None,'active_sessions':len([p for p in active if a.get('name','').split('-')[0] in p.get('kind','')]),'latest_activity':None} for a in agents], 'active_processes': active, 'recent_failed_actions': recent_failed}
-
 @router.get('/agents')
 def get_agents(): return config_service.agents()
 
@@ -82,23 +84,22 @@ def hermes_capabilities():
     mcps = rows('SELECT * FROM mcp_registry ORDER BY created_at DESC')
     return {
         'agent': 'hermes-control',
+        'gateway_note': 'Hermes dashboard is not an action API. Use HERMES_URL for the callable API/gateway, e.g. http://192.168.1.118:8642 when that service is running.',
+        'kanban_note': 'Agentic OS Kanban is currently its own SQLite work queue. It is not yet synchronized with Hermes kanban boards; that requires a Hermes kanban adapter/API contract.',
         'running_here': {'app': 'Agentic OS control plane','host_binding': get_settings().app_host,'public_url': get_settings().public_url,'data_dir': str(get_settings().data_dir),'active_processes': active},
         'configured': {'agents': effective.get('agents', []),'providers': effective.get('providers', []),'workspaces': effective.get('workspaces', []),'skills': effective.get('skills', []),'mcps': mcps},
         'capabilities': [
             {'name':'MCP registry', 'route':'MCPs', 'api':['GET /api/mcps','POST /api/mcps'], 'status':'wired-registry', 'notes':'Register/list MCP connectors. Runtime start/stop is still scaffolded.'},
             {'name':'Chat sessions', 'route':'Chat Sessions', 'api':['GET /api/chat/threads','GET /api/chat/threads/{id}'], 'status':'wired'},
-            {'name':'DeepSeek/OpenAI-compatible chat', 'route':'Chat', 'api':['POST /api/chat'], 'status':'wired-if-provider-configured'},
-            {'name':'Workspaces', 'route':'Workspaces', 'api':['GET /api/workspaces'], 'status':'wired'},
-            {'name':'Kanban', 'route':'Kanban', 'api':['GET/POST/PATCH /api/kanban/tasks'], 'status':'wired'},
+            {'name':'DeepSeek chat', 'route':'DeepSeek Room', 'api':['POST /api/chat'], 'status':'wired-if-provider-configured'},
+            {'name':'Custom agents', 'route':'Agents', 'api':['GET /api/agents','POST /api/runtime/agents'], 'status':'wired-config'},
+            {'name':'Workspaces', 'route':'Workspaces', 'api':['GET /api/workspaces','POST /api/workspaces/register'], 'status':'wired-config-and-status'},
+            {'name':'Kanban', 'route':'Kanban', 'api':['GET/POST/PATCH /api/kanban/tasks'], 'status':'wired-local-board', 'notes':'Not yet synced with Hermes kanban.'},
             {'name':'Memory', 'route':'Memory', 'api':['GET/POST /api/memory'], 'status':'wired-local-db'},
             {'name':'Skills Hub', 'route':'Skills Hub', 'api':['GET /api/skills'], 'status':'wired-registry'},
             {'name':'Audit/activity', 'route':'Activity', 'api':['GET /api/audit','GET /api/audit/export.jsonl'], 'status':'wired'},
             {'name':'Settings registry', 'route':'Settings', 'api':['GET /api/settings/effective','PATCH /api/settings/registry'], 'status':'wired-no-secrets'},
-            {'name':'Goal mode', 'route':'Goals', 'api':['GET/POST/PATCH /api/goals'], 'status':'scaffold-records-only'},
-            {'name':'Cron jobs', 'route':'Capabilities', 'api':[], 'status':'not-yet-integrated', 'notes':'Hermes supports cron, but this app does not manage live Hermes cron yet.'},
-            {'name':'Profiles', 'route':'Capabilities', 'api':[], 'status':'not-yet-integrated', 'notes':'Hermes profiles are documented; UI management is not implemented yet.'},
-            {'name':'Gateway/platforms', 'route':'Capabilities', 'api':[], 'status':'not-yet-integrated', 'notes':'Hermes gateway status/actions are not wired to this app yet.'},
-            {'name':'Tools/toolsets', 'route':'Capabilities', 'api':[], 'status':'not-yet-integrated', 'notes':'Hermes tool enable/disable is not wired yet.'},
+            {'name':'Hermes profiles/gateway/cron', 'route':'Hermes Room', 'api':[], 'status':'not-yet-integrated', 'notes':'Requires Hermes gateway API route mapping. Dashboard port 9119 is not enough.'},
         ]
     }
 
@@ -158,12 +159,12 @@ def kanban_tasks(): return rows('SELECT * FROM kanban_tasks ORDER BY created_at 
 @router.post('/kanban/tasks')
 def kanban_create(body: KanbanIn, request: Request):
     tid=str(uuid.uuid4())
-    execute('INSERT INTO kanban_tasks(id,title,description,status,workspace,agent_session,git_branch,artifact,chat_thread) VALUES (?,?,?,?,?,?,?,?,?)', (tid, body.title, body.description, body.status, body.workspace, body.agent_session, body.git_branch, body.artifact, body.chat_thread))
-    record('kanban.create','ok',actor=actor(request),workspace=body.workspace,metadata={'task_id':tid})
+    execute('INSERT INTO kanban_tasks(id,title,description,status,priority,assigned_agent,schedule,due_at,approval_gate,workspace,agent_session,git_branch,artifact,chat_thread) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', (tid, body.title, body.description, body.status, body.priority, body.assigned_agent, body.schedule, body.due_at, body.approval_gate, body.workspace, body.agent_session, body.git_branch, body.artifact, body.chat_thread))
+    record('kanban.create','ok',actor=actor(request),target_agent=body.assigned_agent,workspace=body.workspace,metadata={'task_id':tid,'schedule':body.schedule,'approval_gate':body.approval_gate})
     return one('SELECT * FROM kanban_tasks WHERE id=?',(tid,))
 @router.patch('/kanban/tasks/{tid}')
 def kanban_patch(tid: str, body: dict, request: Request):
-    allowed={'title','description','status','workspace','agent_session','git_branch','artifact','chat_thread'}
+    allowed={'title','description','status','priority','assigned_agent','schedule','due_at','approval_gate','workspace','agent_session','git_branch','artifact','chat_thread'}
     for k,v in body.items():
         if k in allowed:
             execute(f'UPDATE kanban_tasks SET {k}=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',(v,tid))
@@ -177,8 +178,8 @@ def memory(q: str|None=None):
 @router.post('/memory')
 def memory_create(body: MemoryIn, request: Request):
     mid=str(uuid.uuid4())
-    execute('INSERT INTO memory_records(id,title,content,scope,tags,source_session) VALUES (?,?,?,?,?,?)', (mid, body.title, body.content, body.scope, json.dumps(body.tags), body.source_session))
-    record('memory.create','ok',actor=actor(request),metadata={'memory_id':mid,'scope':body.scope})
+    execute('INSERT INTO memory_records(id,title,content,scope,tags,source_session,source_type,source_name,workspace,agent) VALUES (?,?,?,?,?,?,?,?,?,?)', (mid, body.title, body.content, body.scope, json.dumps(body.tags), body.source_session, body.source_type, body.source_name, body.workspace, body.agent))
+    record('memory.create','ok',actor=actor(request),target_agent=body.agent,workspace=body.workspace,metadata={'memory_id':mid,'scope':body.scope,'source_type':body.source_type,'source_name':body.source_name})
     return one('SELECT * FROM memory_records WHERE id=?',(mid,))
 
 @router.get('/goals')

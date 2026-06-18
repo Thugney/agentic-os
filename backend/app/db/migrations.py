@@ -14,6 +14,17 @@ CREATE TABLE IF NOT EXISTS memory_records (id TEXT PRIMARY KEY, title TEXT NOT N
 CREATE TABLE IF NOT EXISTS agent_processes (id TEXT PRIMARY KEY, kind TEXT NOT NULL, session_id TEXT, pid INTEGER, status TEXT NOT NULL, started_at TEXT DEFAULT CURRENT_TIMESTAMP, ended_at TEXT, metadata TEXT DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS goal_runs (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT DEFAULT '', status TEXT DEFAULT 'Backlog', workspace TEXT, agent TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS mcp_registry (id TEXT PRIMARY KEY, name TEXT NOT NULL, endpoint TEXT, enabled INTEGER DEFAULT 0, status TEXT DEFAULT 'placeholder', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+"""),
+("003_operating_studio_metadata", """
+ALTER TABLE kanban_tasks ADD COLUMN priority TEXT DEFAULT 'normal';
+ALTER TABLE kanban_tasks ADD COLUMN assigned_agent TEXT;
+ALTER TABLE kanban_tasks ADD COLUMN schedule TEXT DEFAULT 'manual';
+ALTER TABLE kanban_tasks ADD COLUMN due_at TEXT;
+ALTER TABLE kanban_tasks ADD COLUMN approval_gate TEXT DEFAULT 'ask-before-run';
+ALTER TABLE memory_records ADD COLUMN source_type TEXT DEFAULT 'manual';
+ALTER TABLE memory_records ADD COLUMN source_name TEXT;
+ALTER TABLE memory_records ADD COLUMN workspace TEXT;
+ALTER TABLE memory_records ADD COLUMN agent TEXT;
 """)]
 
 def run_migrations():
