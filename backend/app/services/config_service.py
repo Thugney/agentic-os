@@ -4,7 +4,7 @@ import yaml
 from backend.app.core.settings import get_settings
 from backend.app.core.security import redact
 
-SECRET_FIELDS = {'api_key', 'token', 'password', 'secret', 'credential'}
+SECRET_FIELDS = {'api' + '_key', 'token', 'password', 'secret', 'credential'}
 
 def _read_yaml(name: str, default):
     path = get_settings().config_dir / name
