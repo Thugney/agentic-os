@@ -1,0 +1,96 @@
+capabilities:
+  - id: codex-build-feature
+    name: "Codex: build feature"
+    description: "Run an audited Codex build task inside an allowlisted workspace with validation and artifact capture."
+    owning_agent: codex
+    allowed_models: [high-accuracy-coding]
+    allowed_tools_mcps: [git, terminal, repository-filesystem]
+    allowed_workspaces: [agentic-os]
+    memory_scope: workspace
+    prompt: "Build the requested feature with tests, docs, and rollback notes. Do not commit or push without approval."
+    inputs: [task, workspace, branch, validation_command]
+    outputs: [diff_summary, test_result, artifacts, audit_event]
+    approval_gates: [before_commit, before_push, before_destructive_command]
+    schedule: { supported: false }
+    bulk_input: { supported_later: true }
+    audit_policy: "Record start, command, workspace, result, artifact paths, and approval decisions."
+    cost_token_policy: "Prefer high-accuracy model only for code-writing/review; record estimated tokens when adapter exposes them."
+    generated_artifacts: [code_changes, validation_log, architecture_notes]
+    validation_command: "npm --prefix frontend run build && pytest"
+    rollback_notes: "Revert branch or restore previous container image; do not mutate production state without approval."
+  - id: codex-review-pr
+    name: "Codex: review PR"
+    description: "Inspect a pull request diff and produce actionable review findings without changing code by default."
+    owning_agent: codex
+    allowed_models: [high-accuracy-coding]
+    allowed_tools_mcps: [git, github-read]
+    allowed_workspaces: [agentic-os]
+    memory_scope: none
+    prompt: "Review the diff for correctness, security, validation gaps, and rollback risk."
+    inputs: [repository, pull_request, review_scope]
+    outputs: [review_findings, risk_summary, test_recommendations]
+    approval_gates: [before_posting_review]
+    schedule: { supported: false }
+    bulk_input: { supported_later: true }
+    audit_policy: "Record PR, files inspected, and posted review handle if approval is granted."
+    cost_token_policy: "High-accuracy review only; summarize large diffs before deeper pass when safe."
+    generated_artifacts: [review_report]
+    validation_command: "git diff --check"
+    rollback_notes: "No code mutation by default; retract or amend review comment if needed."
+  - id: deepseek-low-cost-research
+    name: "DeepSeek: low-cost research"
+    description: "Draft low-risk research notes from non-sensitive public or local-safe material."
+    owning_agent: deepseek
+    allowed_models: [deepseek-chat, deepseek-reasoner, openwebui-local]
+    allowed_tools_mcps: [web-read, local-notes-read]
+    allowed_workspaces: [research, eriteach]
+    memory_scope: session
+    prompt: "Research and summarize. Do not process secrets, raw logs with identifiers, or destructive commands."
+    inputs: [question, sources, output_format]
+    outputs: [summary, citations, follow_up_questions]
+    approval_gates: [before_external_post]
+    schedule: { supported: true }
+    bulk_input: { supported_later: true }
+    audit_policy: "Record sources, model, generated artifact path, and delivery target."
+    cost_token_policy: "Use low-cost local or DeepSeek model; cap context before premium escalation."
+    generated_artifacts: [research_brief, source_index]
+    validation_command: "python -m compileall backend"
+    rollback_notes: "Delete generated note/artifact; no external mutation unless separately approved."
+  - id: claude-premium-architecture-review
+    name: "Claude: premium architecture review"
+    description: "Escalate complex architecture or code-review questions to a premium reasoning lane when configured."
+    owning_agent: claude
+    allowed_models: [claude-premium]
+    allowed_tools_mcps: [repository-read, diagrams-read]
+    allowed_workspaces: [agentic-os]
+    memory_scope: workspace
+    prompt: "Review system design, failure modes, security boundaries, and implementation trade-offs."
+    inputs: [architecture_doc, diff_summary, risk_questions]
+    outputs: [architecture_findings, decision_log, remediation_plan]
+    approval_gates: [before_external_send, before_issue_creation]
+    schedule: { supported: false }
+    bulk_input: { supported_later: false }
+    audit_policy: "Record escalation reason, redaction check, model, and final artifact path."
+    cost_token_policy: "Premium model only for architecture/security complexity that justifies cost."
+    generated_artifacts: [architecture_review]
+    validation_command: "n/a - review artifact only"
+    rollback_notes: "Archive or replace review artifact; no runtime mutation."
+  - id: hermes-scheduled-github-job
+    name: "Hermes: scheduled GitHub job"
+    description: "Run a scheduled Hermes operation that reads allowed sources and delivers an audited briefing or repository artifact."
+    owning_agent: hermes
+    allowed_models: [configured-hermes-primary, deepseek-low-risk-subagent]
+    allowed_tools_mcps: [github, cron, telegram, file]
+    allowed_workspaces: [agentic-os, eriteach]
+    memory_scope: profile
+    prompt: "Execute the scheduled job with least privilege, safe redaction, and verified delivery."
+    inputs: [schedule, target, repository, task_prompt]
+    outputs: [briefing, artifact, delivery_receipt, audit_event]
+    approval_gates: [before_write, before_send_to_external_channel]
+    schedule: { supported: true }
+    bulk_input: { supported_later: true }
+    audit_policy: "Record schedule, data sources, generated files, delivery target, and failures."
+    cost_token_policy: "Use configured primary model; delegate only low-risk summaries without secrets."
+    generated_artifacts: [briefing_markdown, repository_file, telegram_message]
+    validation_command: "python -m compileall backend"
+    rollback_notes: "Pause/remove cron job and revert repository artifact commit if one was created."
