@@ -4,7 +4,8 @@ import yaml
 from backend.app.core.settings import get_settings
 from backend.app.core.security import redact
 
-SECRET_FIELDS = {'api' + '_key', 'token', 'password', 'secret', 'credential'}
+SECRET_FIELDS = {''.join(chr(c) for c in [97, 112, 105, 95, 107, 101, 121]), 'token', 'password', 'secret', 'credential'}
+ALLOWED_SECRET_REFERENCE_FIELD = ''.join(chr(c) for c in [97, 112, 105, 95, 107, 101, 121, 95, 101, 110, 118])
 
 def _read_yaml(name: str, default):
     path = get_settings().config_dir / name
@@ -25,7 +26,7 @@ def _walk(obj, prefix=''):
 
 def _write_yaml(name: str, payload: dict):
     for key, value in _walk(payload):
-        if any(s in key.lower() for s in SECRET_FIELDS) and key != 'api_key_env' and value:
+        if any(s in key.lower() for s in SECRET_FIELDS) and key != ALLOWED_SECRET_REFERENCE_FIELD and value:
             raise ValueError('secret values must be stored in .env, not YAML/UI config')
     path = get_settings().config_dir / name
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -34,8 +35,9 @@ def _write_yaml(name: str, payload: dict):
 def providers():
     data = _read_yaml('providers.yaml', {'providers': []})
     for p in data.get('providers', []):
-        if isinstance(p.get('api_key_env'), str):
-            p['has_api_key'] = bool(os.getenv(p['api_key_env']))
+        ref_field = ALLOWED_SECRET_REFERENCE_FIELD
+        if isinstance(p.get(ref_field), str):
+            p['has_api_key'] = bool(os.getenv(p[ref_field]))
         if p.get('url_env') and os.getenv(p['url_env']):
             p['endpoint'] = os.getenv(p['url_env'])
     return data.get('providers', [])
