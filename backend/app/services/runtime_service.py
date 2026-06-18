@@ -69,6 +69,27 @@ def _probe_cli(binary: str) -> dict[str, Any]:
         return {'status': 'error', 'ready': False, 'detail': str(exc), 'path': path}
 
 
+async def _probe_hermes_gateway(endpoint: str | None) -> dict[str, Any]:
+    if not endpoint:
+        return {'status': 'misconfigured', 'ready': False, 'detail': 'Hermes gateway/API endpoint is missing', 'endpoint': endpoint, 'chat_available': False, 'action_available': False}
+    base = str(endpoint).rstrip('/')
+    candidates = ['/health', '/api/health', '/openapi.json', '/docs']
+    observations: list[str] = []
+    try:
+        async with httpx.AsyncClient(timeout=3) as client:
+            for path in candidates:
+                response = await client.get(base + path)
+                observations.append(f'{path} -> HTTP {response.status_code}')
+                if response.status_code < 400:
+                    route_ready = path in {'/health', '/api/health', '/openapi.json'}
+                    status = 'ready' if route_ready else 'reachable_needs_adapter'
+                    detail = f'Hermes endpoint reachable via {base + path}. Capability adapter still needs route mapping for sessions/kanban/cron/tools.'
+                    return {'status': status, 'ready': route_ready, 'detail': detail, 'endpoint': endpoint, 'probe_path': path, 'observations': observations, 'chat_available': False, 'action_available': route_ready}
+        return {'status': 'reachable_no_known_api', 'ready': False, 'detail': f'Hermes host responded but no known Agentic OS health/discovery route worked: {"; ".join(observations)}. Do not mark Hermes runtime ready until the gateway API contract is mapped.', 'endpoint': endpoint, 'observations': observations, 'chat_available': False, 'action_available': False}
+    except Exception as exc:
+        return {'status': 'offline', 'ready': False, 'detail': f'Cannot reach Hermes gateway/API endpoint {endpoint}: {exc}', 'endpoint': endpoint, 'observations': observations, 'chat_available': False, 'action_available': False}
+
+
 async def test_provider(name: str) -> dict[str, Any]:
     provider = _provider_by_name(name) or {}
     if not provider:
@@ -84,18 +105,12 @@ async def test_provider(name: str) -> dict[str, Any]:
         result['connection_mode'] = provider.get('connection_mode')
         return result
     if provider.get('type') == 'hermes':
-        endpoint = provider.get('endpoint')
         if provider.get('connection_mode') == 'local_cli':
             result = _probe_cli(provider.get('cli_binary') or 'hermes')
-        elif endpoint:
-            try:
-                async with httpx.AsyncClient(timeout=3) as client:
-                    r = await client.get(str(endpoint).rstrip('/') + '/api/health')
-                result = {'status': 'reachable' if r.status_code < 500 else 'error', 'ready': r.status_code < 500, 'detail': f'Hermes API health returned HTTP {r.status_code}', 'endpoint': endpoint}
-            except Exception as exc:
-                result = {'status': 'offline', 'ready': False, 'detail': f'Cannot reach Hermes API endpoint {endpoint}: {exc}', 'endpoint': endpoint}
+            result['chat_available'] = bool(result.get('ready'))
+            result['action_available'] = bool(result.get('ready'))
         else:
-            result = {'status': 'misconfigured', 'ready': False, 'detail': 'Hermes endpoint is missing'}
+            result = await _probe_hermes_gateway(provider.get('endpoint'))
         result['provider'] = name
         result['connection_mode'] = provider.get('connection_mode')
         return result
@@ -110,27 +125,18 @@ async def runtime_status() -> dict[str, Any]:
     codex = (_probe_cli(codex_provider.get('cli_binary') or 'codex') if codex_provider.get('connection_mode','subscription_cli') in {'local_cli','subscription_cli'} else {'status': 'adapter_not_implemented', 'ready': False, 'detail': f"{codex_provider.get('connection_mode')} adapter selected; implement or configure subscription_cli before running"}) if _agent_enabled('codex-worker') else {'status': 'disabled', 'ready': False, 'detail': 'codex-worker agent disabled'}
     hermes_cli = _probe_cli(os.getenv('HERMES_CLI', 'hermes')) if _agent_enabled('hermes-control') else {'status': 'disabled', 'ready': False, 'detail': 'hermes-control agent disabled'}
     hermes_endpoint = hermes.get('endpoint')
-    hermes_ready = False
-    hermes_detail = hermes_cli.get('detail')
     if hermes_cli.get('ready'):
-        hermes_ready = True
-        hermes_detail = f"Hermes CLI available: {hermes_cli.get('detail')}"
-    elif hermes_endpoint:
-        try:
-            async with httpx.AsyncClient(timeout=3) as client:
-                r = await client.get(str(hermes_endpoint).rstrip('/') + '/api/health')
-            hermes_ready = r.status_code < 500
-            hermes_detail = f'Hermes API endpoint {hermes_endpoint}/api/health returned HTTP {r.status_code}; CLI bridge is {hermes_cli.get("status")}'
-        except Exception as exc:
-            hermes_detail = f'Hermes CLI missing and API endpoint {hermes_endpoint} unreachable: {exc}'
+        hermes_status = {'status': 'ready', 'ready': True, 'detail': f"Hermes CLI bridge available: {hermes_cli.get('detail')}", 'chat_available': True, 'action_available': True}
     else:
-        hermes_detail = 'Hermes endpoint missing and Hermes CLI not available'
+        hermes_status = await _probe_hermes_gateway(hermes_endpoint) if _agent_enabled('hermes-control') else {'status': 'disabled', 'ready': False, 'detail': 'hermes-control agent disabled', 'chat_available': False, 'action_available': False}
+        if hermes_status.get('detail') and hermes_cli.get('status') == 'missing':
+            hermes_status['detail'] = f"{hermes_status['detail']} CLI bridge is missing, so local CLI chat is unavailable."
     return {
         'heartbeat': 'online',
         'systems': [
             {'name': 'codex-worker', 'provider': 'codex', 'connection_mode': codex_provider.get('connection_mode'), 'enabled': _agent_enabled('codex-worker'), 'status': codex.get('status'), 'ready': codex.get('ready'), 'detail': codex.get('detail'), 'path': codex.get('path'), 'action_available': bool(codex.get('ready')), 'chat_available': False},
             {'name': 'deepseek-chat', 'provider': deepseek_provider.get('name','deepseek'), 'connection_mode': deepseek_provider.get('connection_mode'), 'enabled': _agent_enabled('deepseek-chat'), 'status': deepseek.get('status'), 'ready': deepseek.get('ready'), 'detail': deepseek.get('detail'), 'latency_ms': deepseek.get('latency_ms'), 'models': deepseek.get('models', []), 'chat_available': bool(deepseek.get('chat_available'))},
-            {'name': 'hermes-control', 'provider': 'hermes', 'connection_mode': hermes.get('connection_mode'), 'enabled': _agent_enabled('hermes-control'), 'status': 'ready' if hermes_ready else 'not_connected', 'ready': hermes_ready, 'detail': hermes_detail, 'path': hermes_cli.get('path'), 'endpoint': hermes_endpoint, 'chat_available': hermes_ready, 'action_available': hermes_ready},
+            {'name': 'hermes-control', 'provider': 'hermes', 'connection_mode': hermes.get('connection_mode'), 'enabled': _agent_enabled('hermes-control'), 'status': hermes_status.get('status'), 'ready': hermes_status.get('ready'), 'detail': hermes_status.get('detail'), 'path': hermes_cli.get('path'), 'endpoint': hermes_endpoint, 'chat_available': bool(hermes_status.get('chat_available')), 'action_available': bool(hermes_status.get('action_available'))},
             {'name': 'claude-code', 'provider': 'claude', 'enabled': _agent_enabled('claude-code'), 'status': 'disabled', 'ready': False, 'detail': 'Claude Code agent is disabled until configured', 'chat_available': False},
         ]
     }
