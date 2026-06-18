@@ -5,29 +5,31 @@ providers:
     connection_mode: cloud_api
     endpoint: https://api.deepseek.com
     url_env: DEEPSEEK_BASE_URL
-    default_model: deepseek-chat
+    default_model: null
+    model_selection: live_dropdown
     api_key_env: DEEPSEEK_API_KEY
     enabled: true
-    notes: "Default DeepSeek connection. Store the API key in .env as DEEPSEEK_API_KEY; do not paste secrets into the UI."
+    notes: "Default DeepSeek connection. Store the API key in .env as DEEPSEEK_API_KEY; Agentic OS lists available models from /v1/models and lets Robel choose per chat."
   - name: openwebui
     label: OpenWebUI / custom OpenAI-compatible endpoint
     type: openai_compatible
     connection_mode: custom_endpoint
     endpoint: http://127.0.0.1:18790
     url_env: OPENWEBUI_URL
-    default_model: deepseek-v4
+    default_model: null
+    model_selection: live_dropdown
     api_key_env: OPENWEBUI_API_KEY
     enabled: false
     notes: "Optional local/custom endpoint. Enable only if Robel chooses OpenWebUI/OpenClaw later."
   - name: codex
     label: Codex
     type: codex
-    connection_mode: local_cli
+    connection_mode: subscription_cli
     endpoint: local-cli
     cli_binary: codex
-    api_key_env: OPENAI_API_KEY
+    auth_mode: interactive_subscription
     enabled: true
-    notes: "MVP execution uses a local CLI adapter inside the Agentic OS runtime. Remote/API adapters are explicit future modes, not silently assumed."
+    notes: "Desired path is Robel's Codex subscription through an authenticated CLI/session. Agentic OS must run the Codex adapter where that login exists; API-key mode is not required."
   - name: hermes
     label: Hermes Agent
     type: hermes
@@ -39,6 +41,10 @@ providers:
     notes: "Remote Hermes should be an API/gateway endpoint, not a dashboard URL. CLI bridge is optional if Hermes is installed/mounted locally."
   - name: claude
     label: Claude Code
-    type: placeholder
-    connection_mode: not_configured
+    type: claude_code
+    connection_mode: subscription_cli
+    endpoint: local-cli
+    cli_binary: claude
+    auth_mode: interactive_subscription
     enabled: false
+    notes: "Desired path is Robel's Claude subscription through Claude Code CLI. Agentic OS needs a subscription CLI adapter; API key is not required."
