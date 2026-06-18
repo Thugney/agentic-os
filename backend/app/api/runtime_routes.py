@@ -90,9 +90,9 @@ async def codex_run_runtime(body: RuntimeCodexIn, request: Request):
         raise HTTPException(400, str(e))
 
 @router.post('/hermes/chat')
-def hermes_chat_runtime(body: RuntimeHermesChatIn, request: Request):
+async def hermes_chat_runtime(body: RuntimeHermesChatIn, request: Request):
     try:
-        return send_hermes_chat(body.message, body.thread_id, actor(request))
+        return await send_hermes_chat(body.message, body.thread_id, actor(request))
     except Exception as e:
         raise HTTPException(502, str(e))
 
