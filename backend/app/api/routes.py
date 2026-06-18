@@ -17,6 +17,7 @@ class ChatIn(BaseModel):
     message: str
     agent: str='deepseek-chat'
     thread_id: str|None=None
+    model: str|None=None
 class CodexIn(BaseModel):
     task: str
     workspace: str
@@ -76,31 +77,13 @@ def get_agents(): return config_service.agents()
 
 @router.get('/hermes/capabilities')
 def hermes_capabilities():
-    """Expose the Hermes capability map used by the UI.
-
-    This is intentionally explicit instead of pretending the UI can magically
-    mutate the running Hermes instance. Items marked wired have an API in this
-    app today; scaffold items are visible but not yet runtime-managed.
-    """
     effective = config_service.effective_settings()
     active = rows("SELECT * FROM agent_processes WHERE status='running' ORDER BY started_at DESC")
     mcps = rows('SELECT * FROM mcp_registry ORDER BY created_at DESC')
     return {
         'agent': 'hermes-control',
-        'running_here': {
-            'app': 'Agentic OS control plane',
-            'host_binding': get_settings().app_host,
-            'public_url': get_settings().public_url,
-            'data_dir': str(get_settings().data_dir),
-            'active_processes': active,
-        },
-        'configured': {
-            'agents': effective.get('agents', []),
-            'providers': effective.get('providers', []),
-            'workspaces': effective.get('workspaces', []),
-            'skills': effective.get('skills', []),
-            'mcps': mcps,
-        },
+        'running_here': {'app': 'Agentic OS control plane','host_binding': get_settings().app_host,'public_url': get_settings().public_url,'data_dir': str(get_settings().data_dir),'active_processes': active},
+        'configured': {'agents': effective.get('agents', []),'providers': effective.get('providers', []),'workspaces': effective.get('workspaces', []),'skills': effective.get('skills', []),'mcps': mcps},
         'capabilities': [
             {'name':'MCP registry', 'route':'MCPs', 'api':['GET /api/mcps','POST /api/mcps'], 'status':'wired-registry', 'notes':'Register/list MCP connectors. Runtime start/stop is still scaffolded.'},
             {'name':'Chat sessions', 'route':'Chat Sessions', 'api':['GET /api/chat/threads','GET /api/chat/threads/{id}'], 'status':'wired'},
@@ -141,7 +124,7 @@ def chat_threads(): return threads()
 def chat_thread(tid: str): return thread(tid)
 @router.post('/chat')
 async def chat_post(body: ChatIn, request: Request):
-    try: return await send_chat(body.message, body.agent, body.thread_id, actor(request))
+    try: return await send_chat(body.message, body.agent, body.thread_id, actor(request), model_override=body.model)
     except Exception as e: raise HTTPException(502, str(e))
 
 @router.get('/codex/sessions')
