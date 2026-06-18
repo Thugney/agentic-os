@@ -1,0 +1,22 @@
+spaces:
+  - id: automation
+    name: Automation Space
+    description: "Build and operate local-first AI automation workflows."
+    agents: [hermes, codex, deepseek]
+    capabilities: [codex-build-feature, codex-review-pr, hermes-scheduled-github-job]
+    workspaces: [agentic-os]
+    memory_scope: workspace
+  - id: architecture
+    name: Architecture Space
+    description: "Architecture decisions, diagrams, product direction, and premium review lanes."
+    agents: [codex, claude, hermes]
+    capabilities: [codex-build-feature, claude-premium-architecture-review]
+    workspaces: [agentic-os]
+    memory_scope: workspace
+  - id: research-content
+    name: Research and Content Space
+    description: "Low-risk research, summaries, and Eriteach content workflows."
+    agents: [deepseek, hermes]
+    capabilities: [deepseek-low-cost-research, hermes-scheduled-github-job]
+    workspaces: [research, eriteach]
+    memory_scope: session

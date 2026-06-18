@@ -43,9 +43,11 @@ def providers():
 def agents(): return _read_yaml('agents.yaml', {'agents': []}).get('agents', [])
 def workspaces(): return _read_yaml('workspaces.yaml', {'workspaces': []}).get('workspaces', [])
 def skills(): return _read_yaml('skills.yaml', {'skills': []}).get('skills', [])
+def capabilities(): return _read_yaml('capabilities.yaml', {'capabilities': []}).get('capabilities', [])
+def spaces(): return _read_yaml('spaces.yaml', {'spaces': []}).get('spaces', [])
 
 def update_registry(kind: str, payload: dict):
-    mapping = {'providers':'providers.yaml','agents':'agents.yaml','workspaces':'workspaces.yaml','skills':'skills.yaml'}
+    mapping = {'providers':'providers.yaml','agents':'agents.yaml','workspaces':'workspaces.yaml','skills':'skills.yaml','capabilities':'capabilities.yaml','spaces':'spaces.yaml'}
     if kind not in mapping:
         raise ValueError('unknown registry')
     _write_yaml(mapping[kind], payload)
@@ -60,4 +62,4 @@ def missing_config():
 
 def effective_settings():
     s = get_settings()
-    return {'app': {'url': s.public_url, 'bind_host': s.app_host, 'port': s.app_port, 'environment': s.environment, 'data_dir': str(s.data_dir), 'sqlite_path': str(s.db_path)}, 'providers': redact(providers()), 'agents': agents(), 'workspaces': workspaces(), 'skills': skills(), 'missing': missing_config()}
+    return {'app': {'url': s.public_url, 'bind_host': s.app_host, 'port': s.app_port, 'environment': s.environment, 'data_dir': str(s.data_dir), 'sqlite_path': str(s.db_path)}, 'providers': redact(providers()), 'agents': agents(), 'workspaces': workspaces(), 'skills': skills(), 'capabilities': capabilities(), 'spaces': spaces(), 'missing': missing_config()}
