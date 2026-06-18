@@ -50,6 +50,7 @@ class AgentPatch(BaseModel):
     workspace: str | None = None
     role: str | None = None
     allowed_tools: list[str] | None = None
+    capabilities: list[str] | None = None
     workspace_access: list[str] | None = None
     memory_scopes: list[str] | None = None
     mcp_channels: list[str] | None = None
@@ -112,7 +113,7 @@ def update_agent(body: AgentPatch, request: Request):
     payload = body.model_dump(exclude={'name'}, exclude_none=True)
     try:
         agent = config_service.set_agent(body.name, payload)
-        record('runtime.agent.update','ok',actor=actor(request),target_agent=body.name,command_type='config',metadata={'fields': sorted(payload.keys())})
+        record('runtime.agent.update','ok',actor=actor(request),target_agent=body.name,command_type='config',metadata={'fields': sorted(payload.keys()), 'capabilities': payload.get('capabilities', [])})
         return {'agent': agent, 'settings': config_service.effective_settings()}
     except Exception as e:
         record('runtime.agent.update','failed',actor=actor(request),target_agent=body.name,command_type='config',error=e)
