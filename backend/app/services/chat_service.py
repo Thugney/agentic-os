@@ -15,13 +15,15 @@ def _agent(name):
         if a.get('name') == name: return a
     return None
 
-async def send_chat(message: str, agent: str='deepseek-chat', thread_id: str | None=None, actor='local-admin'):
+async def send_chat(message: str, agent: str='deepseek-chat', thread_id: str | None=None, actor='local-admin', model_override: str | None=None):
     a=_agent(agent) or {}
     p=_provider(a.get('provider','openwebui'))
-    model=a.get('model') or p.get('default_model')
+    model=model_override or p.get('default_model') or a.get('model')
     endpoint=p.get('endpoint')
-    if not endpoint or not model:
-        raise ValueError('missing endpoint or model')
+    if not endpoint:
+        raise ValueError('missing endpoint')
+    if not model or str(model).startswith('selected-'):
+        raise ValueError('select a model from the provider model list before chatting')
     tid=thread_id or str(uuid.uuid4())
     if not one('SELECT id FROM chat_threads WHERE id=?', (tid,)):
         execute('INSERT INTO chat_threads(id,title,agent,provider,model) VALUES (?,?,?,?,?)', (tid, message[:60] or 'New chat', agent, p.get('name'), model))

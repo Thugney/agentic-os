@@ -48,8 +48,11 @@ async def _probe_openai_compatible(provider: dict[str, Any]) -> dict[str, Any]:
             models = [item.get('id') for item in payload.get('data', []) if isinstance(item, dict)]
         except Exception:
             models = []
-        model_known = bool(model) and (not models or model in models)
-        return {'status': 'ready' if model_known else 'warning', 'ready': model_known, 'detail': 'OpenAI-compatible endpoint reachable' if model_known else f'endpoint reachable but configured model {model!r} was not listed', 'latency_ms': latency, 'models': models[:25], 'chat_available': model_known}
+        model_required = bool(model) and not str(model).startswith('selected-')
+        model_known = (model in models) if (model_required and models) else True
+        ready = bool(models) and model_known
+        detail = 'OpenAI-compatible endpoint reachable; choose a model from the dropdown' if ready and not model_required else ('OpenAI-compatible endpoint reachable' if ready else f'endpoint reachable but configured model {model!r} was not listed')
+        return {'status': 'ready' if ready else 'warning', 'ready': ready, 'detail': detail, 'latency_ms': latency, 'models': models[:50], 'chat_available': ready}
     except Exception as exc:
         return {'status': 'offline', 'ready': False, 'detail': f'cannot reach {endpoint}: {exc}', 'chat_available': False}
 
@@ -76,7 +79,7 @@ async def test_provider(name: str) -> dict[str, Any]:
         result['connection_mode'] = provider.get('connection_mode')
         return result
     if provider.get('type') == 'codex':
-        result = _probe_cli(provider.get('cli_binary') or 'codex') if provider.get('connection_mode') == 'local_cli' else {'status': 'not_implemented', 'ready': False, 'detail': f"{provider.get('connection_mode')} adapter is configured but not implemented yet"}
+        result = _probe_cli(provider.get('cli_binary') or 'codex') if provider.get('connection_mode') in {'local_cli','subscription_cli'} else {'status': 'not_implemented', 'ready': False, 'detail': f"{provider.get('connection_mode')} adapter is configured but not implemented yet"}
         result['provider'] = name
         result['connection_mode'] = provider.get('connection_mode')
         return result
@@ -104,7 +107,7 @@ async def runtime_status() -> dict[str, Any]:
     hermes = _provider_by_name('hermes') or {}
     codex_provider = _provider_by_name('codex') or {}
     deepseek = await _probe_openai_compatible(deepseek_provider) if _agent_enabled('deepseek-chat') else {'status': 'disabled', 'ready': False, 'detail': 'deepseek-chat agent disabled', 'chat_available': False}
-    codex = (_probe_cli(codex_provider.get('cli_binary') or 'codex') if codex_provider.get('connection_mode','local_cli') == 'local_cli' else {'status': 'adapter_not_implemented', 'ready': False, 'detail': f"{codex_provider.get('connection_mode')} adapter selected; implement or configure local_cli before running"}) if _agent_enabled('codex-worker') else {'status': 'disabled', 'ready': False, 'detail': 'codex-worker agent disabled'}
+    codex = (_probe_cli(codex_provider.get('cli_binary') or 'codex') if codex_provider.get('connection_mode','subscription_cli') in {'local_cli','subscription_cli'} else {'status': 'adapter_not_implemented', 'ready': False, 'detail': f"{codex_provider.get('connection_mode')} adapter selected; implement or configure subscription_cli before running"}) if _agent_enabled('codex-worker') else {'status': 'disabled', 'ready': False, 'detail': 'codex-worker agent disabled'}
     hermes_cli = _probe_cli(os.getenv('HERMES_CLI', 'hermes')) if _agent_enabled('hermes-control') else {'status': 'disabled', 'ready': False, 'detail': 'hermes-control agent disabled'}
     hermes_endpoint = hermes.get('endpoint')
     hermes_ready = False
