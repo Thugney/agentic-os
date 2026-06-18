@@ -6,10 +6,12 @@ from backend.app.core.logging import configure_logging
 from backend.app.core.security import AdminTokenMiddleware
 from backend.app.db.migrations import run_migrations
 from backend.app.api.routes import router
+from backend.app.api.runtime_routes import router as runtime_router
 
 configure_logging()
 app=FastAPI(title='Agentic OS', version='0.1.0')
 app.add_middleware(AdminTokenMiddleware)
+app.include_router(runtime_router)
 app.include_router(router)
 
 @app.on_event('startup')

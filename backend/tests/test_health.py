@@ -40,3 +40,22 @@ def test_production_requires_token(monkeypatch, tmp_path):
     from backend.app.main import app
     c=TestClient(app)
     assert c.get('/api/health').status_code == 503
+
+def test_runtime_status_is_honest(monkeypatch, tmp_path):
+    c=make_client(monkeypatch,tmp_path)
+    r=c.get('/api/systems/status')
+    assert r.status_code == 200
+    systems = {s['name']: s for s in r.json()['systems']}
+    assert 'deepseek-chat' in systems
+    assert 'codex-worker' in systems
+    assert 'hermes-control' in systems
+    assert 'ready' in systems['deepseek-chat']
+    assert 'detail' in systems['codex-worker']
+    assert systems['claude-code']['ready'] is False
+
+def test_hermes_chat_reports_missing_bridge(monkeypatch, tmp_path):
+    monkeypatch.setenv('HERMES_CLI', 'definitely-missing-hermes-binary')
+    c=make_client(monkeypatch,tmp_path)
+    r=c.post('/api/hermes/chat', json={'message':'hello'})
+    assert r.status_code == 502
+    assert 'Hermes CLI' in r.text
