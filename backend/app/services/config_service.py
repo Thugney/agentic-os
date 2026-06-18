@@ -15,7 +15,7 @@ def _read_yaml(name: str, default):
 
 def _walk(obj, prefix=''):
     if isinstance(obj, dict):
-        for k,v in obj.items():
+        for k, v in obj.items():
             yield from _walk(v, str(k))
     elif isinstance(obj, list):
         for v in obj:
@@ -52,6 +52,59 @@ def update_registry(kind: str, payload: dict):
         raise ValueError('unknown registry')
     _write_yaml(mapping[kind], payload)
     return effective_settings()
+
+def set_provider(name: str, patch: dict):
+    data = _read_yaml('providers.yaml', {'providers': []})
+    providers_list = data.setdefault('providers', [])
+    current = None
+    for provider in providers_list:
+        if provider.get('name') == name:
+            current = provider
+            break
+    if current is None:
+        current = {'name': name}
+        providers_list.append(current)
+    for key, value in patch.items():
+        if value is not None:
+            current[key] = value
+    _write_yaml('providers.yaml', data)
+    return current
+
+def set_agent(name: str, patch: dict):
+    data = _read_yaml('agents.yaml', {'agents': []})
+    agents_list = data.setdefault('agents', [])
+    current = None
+    for agent in agents_list:
+        if agent.get('name') == name:
+            current = agent
+            break
+    if current is None:
+        current = {'name': name}
+        agents_list.append(current)
+    for key, value in patch.items():
+        if value is not None:
+            current[key] = value
+    _write_yaml('agents.yaml', data)
+    return current
+
+def add_workspace(payload: dict):
+    data = _read_yaml('workspaces.yaml', {'workspaces': []})
+    items = data.setdefault('workspaces', [])
+    name = payload.get('name')
+    if not name:
+        raise ValueError('workspace name is required')
+    if not payload.get('path'):
+        raise ValueError('workspace path is required')
+    if not payload.get('allowed_commands'):
+        payload['allowed_commands'] = ['npm test', 'npm run build', 'pytest', 'python -m pytest']
+    for i, workspace in enumerate(items):
+        if workspace.get('name') == name:
+            items[i] = {**workspace, **payload}
+            _write_yaml('workspaces.yaml', data)
+            return items[i]
+    items.append(payload)
+    _write_yaml('workspaces.yaml', data)
+    return payload
 
 def missing_config():
     missing=[]
