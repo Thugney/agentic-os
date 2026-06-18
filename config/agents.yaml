@@ -38,20 +38,6 @@ agents:
     approval_policy: ask-before-runtime-action
     system_prompt: Hermes remote control-plane adapter. Requires Hermes API/gateway endpoint or optional local CLI bridge. Dashboard port is not an action bridge.
     enabled: true
-  - name: seo-agent
-    label: SEO Agent
-    provider: deepseek
-    model: selected-at-run-time
-    endpoint: https://api.deepseek.com
-    workspace: agentic-os
-    role: Research, outline, and improve SEO content using assigned workspace docs and memory.
-    allowed_tools: [chat, memory-read, workspace-context, skills]
-    workspace_access: [agentic-os]
-    memory_scopes: [global, workspace, agent]
-    mcp_channels: [memory, workspace, skills, kanban, audit]
-    approval_policy: ask-before-external-publish
-    system_prompt: You are a focused SEO operations agent. Use assigned workspace files and memory. Do not publish externally without approval.
-    enabled: true
   - name: claude-code
     label: Claude Code
     provider: claude
