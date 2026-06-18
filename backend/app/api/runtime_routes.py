@@ -32,19 +32,29 @@ class ProviderPatch(BaseModel):
     endpoint: str | None = None
     url_env: str | None = None
     default_model: str | None = None
+    model_selection: str | None = None
     api_key_env: str | None = None
     cli_binary: str | None = None
+    auth_mode: str | None = None
     enabled: bool | None = None
     notes: str | None = None
 
 class AgentPatch(BaseModel):
     model_config = ConfigDict(extra='forbid')
     name: str
+    label: str | None = None
     provider: str | None = None
     model: str | None = None
     endpoint: str | None = None
     enabled: bool | None = None
     workspace: str | None = None
+    role: str | None = None
+    allowed_tools: list[str] | None = None
+    workspace_access: list[str] | None = None
+    memory_scopes: list[str] | None = None
+    mcp_channels: list[str] | None = None
+    system_prompt: str | None = None
+    approval_policy: str | None = None
 
 class WorkspaceRegister(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -53,6 +63,8 @@ class WorkspaceRegister(BaseModel):
     default_branch: str | None = None
     description: str | None = None
     allowed_commands: list[str] = []
+    allowed_agents: list[str] = []
+    memory_scopes: list[str] = []
 
 def actor(req: Request):
     return actor_from_token(req.headers.get('x-admin-token') or req.headers.get('authorization'))
@@ -120,7 +132,7 @@ async def test_runtime_provider(name: str, request: Request):
 def register_workspace(body: WorkspaceRegister, request: Request):
     try:
         workspace = config_service.add_workspace(body.model_dump(exclude_none=True))
-        record('workspace.register','ok',actor=actor(request),workspace=workspace.get('name'),command_type='config',metadata={'path': workspace.get('path')})
+        record('workspace.register','ok',actor=actor(request),workspace=workspace.get('name'),command_type='config',metadata={'path': workspace.get('path'), 'allowed_agents': workspace.get('allowed_agents', [])})
         return {'workspace': workspace, 'settings': config_service.effective_settings()}
     except Exception as e:
         record('workspace.register','failed',actor=actor(request),workspace=body.name,command_type='config',error=e)
