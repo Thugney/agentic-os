@@ -10,4 +10,5 @@ export type KanbanTask={id:string;title:string;description?:string;status:string
 export type MemoryRecord={id:string;title:string;content:string;scope:string;tags?:string| string[];source_session?:string;created_at?:string;updated_at?:string};
 export type AuditEvent={id?:number;timestamp?:string;actor?:string;action:string;target_agent?:string;workspace?:string;command_type?:string;status:string;error?:string;git_branch?:string;git_commit?:string;metadata?:any};
 export type Skill={name:string;provider?:string;tool?:string;enabled?:boolean;command_template?:string;agent?:string;description?:string;[key:string]:any};
-export type EffectiveSettings={providers?:any[];agents?:any[];workspaces?:Workspace[];skills?:any[];capabilities?:any[];spaces?:any[];[key:string]:any};
+export type AgentDefinition={name:string;label?:string;provider?:string;model?:string;role?:string;workspace?:string;system_prompt?:string;approval_policy?:string;enabled?:boolean;capabilities?:string[];allowed_tools?:string[];workspace_access?:string[];memory_scopes?:string[];mcp_channels?:string[];memory_scope?:string;connection_mode?:string;runtime?:string;description?:string;[key:string]:any};
+export type EffectiveSettings={providers?:any[];agents?:AgentDefinition[];workspaces?:Workspace[];skills?:any[];capabilities?:any[];spaces?:any[];[key:string]:any};
