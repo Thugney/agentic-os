@@ -15,16 +15,21 @@ CREATE TABLE IF NOT EXISTS agent_processes (id TEXT PRIMARY KEY, kind TEXT NOT N
 CREATE TABLE IF NOT EXISTS goal_runs (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT DEFAULT '', status TEXT DEFAULT 'Backlog', workspace TEXT, agent TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS mcp_registry (id TEXT PRIMARY KEY, name TEXT NOT NULL, endpoint TEXT, enabled INTEGER DEFAULT 0, status TEXT DEFAULT 'placeholder', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 """),
-("003_operating_studio_metadata", """
+("003_work_order_runtime_path", """
 ALTER TABLE kanban_tasks ADD COLUMN priority TEXT DEFAULT 'normal';
 ALTER TABLE kanban_tasks ADD COLUMN assigned_agent TEXT;
+ALTER TABLE kanban_tasks ADD COLUMN agent TEXT;
+ALTER TABLE kanban_tasks ADD COLUMN capability_id TEXT;
+ALTER TABLE kanban_tasks ADD COLUMN memory_scope TEXT DEFAULT 'workspace';
 ALTER TABLE kanban_tasks ADD COLUMN schedule TEXT DEFAULT 'manual';
+ALTER TABLE kanban_tasks ADD COLUMN schedule_intent TEXT DEFAULT 'manual';
 ALTER TABLE kanban_tasks ADD COLUMN due_at TEXT;
 ALTER TABLE kanban_tasks ADD COLUMN approval_gate TEXT DEFAULT 'ask-before-run';
-ALTER TABLE memory_records ADD COLUMN source_type TEXT DEFAULT 'manual';
-ALTER TABLE memory_records ADD COLUMN source_name TEXT;
-ALTER TABLE memory_records ADD COLUMN workspace TEXT;
-ALTER TABLE memory_records ADD COLUMN agent TEXT;
+ALTER TABLE kanban_tasks ADD COLUMN approval_state TEXT DEFAULT 'needs_approval';
+ALTER TABLE kanban_tasks ADD COLUMN validation_command TEXT;
+ALTER TABLE kanban_tasks ADD COLUMN run_session_id TEXT;
+ALTER TABLE kanban_tasks ADD COLUMN artifact_refs TEXT DEFAULT '[]';
+UPDATE kanban_tasks SET agent=COALESCE(agent, assigned_agent), schedule_intent=COALESCE(schedule_intent, schedule), approval_state=COALESCE(approval_state, 'needs_approval');
 """)]
 
 def run_migrations():
